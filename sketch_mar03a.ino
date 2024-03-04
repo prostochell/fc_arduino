@@ -120,10 +120,10 @@ void calibration() {
   long offsets[6];
   long offsetsOld[6];
   int16_t mpuGet[6];
-  // используем стандартную точность
+  // use standard accuracy
   mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
   mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_250);
-  // обнуляем оффсеты
+  // reset offsets
   mpu.setXAccelOffset(0);
   mpu.setYAccelOffset(0);
   mpu.setZAccelOffset(0);
@@ -131,23 +131,23 @@ void calibration() {
   mpu.setYGyroOffset(0);
   mpu.setZGyroOffset(0);
   delay(10);
-  for (byte n = 0; n < 10; n++) {     // 10 итераций калибровки
-    for (byte j = 0; j < 6; j++) {    // обнуляем калибровочный массив
+  for (byte n = 0; n < 10; n++) {     // 10 calibration iterations
+    for (byte j = 0; j < 6; j++) {    // reset the calibration array
       offsets[j] = 0;
     }
     for (byte i = 0; i < 100 + BUFFER_SIZE; i++) {
-      // делаем BUFFER_SIZE измерений для усреднения
+      // make BUFFER_SIZE of measurements for averaging
       mpu.getMotion6(&mpuGet[0], &mpuGet[1], &mpuGet[2], &mpuGet[3], &mpuGet[4], &mpuGet[5]);
-      // пропускаем первые 99 измерений
+      // skip the first 99 measurements
       if (i >= 99) {
         for (byte j = 0; j < 6; j++) {
-          offsets[j] += (long)mpuGet[j];    // записываем в калибровочный массив
+          offsets[j] += (long)mpuGet[j];    // write to the calibration array
         }
       }
     }
     for (byte i = 0; i < 6; i++) {
-      offsets[i] = offsetsOld[i] - ((long)offsets[i] / BUFFER_SIZE); // учитываем предыдущую калибровку
-      if (i == 2) offsets[i] += 16384;                               // если ось Z, калибруем в 16384
+      offsets[i] = offsetsOld[i] - ((long)offsets[i] / BUFFER_SIZE); // take into account previous calibration
+      if (i == 2) offsets[i] += 16384;                               // if Z axis, calibrate to 16384
       offsetsOld[i] = offsets[i];
     }
     // ставим новые оффсеты
