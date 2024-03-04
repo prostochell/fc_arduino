@@ -1,11 +1,9 @@
 #define COMPL_K 0.09
 #define BUFFER_SIZE 100
-#define START_BYTE 1010
 
 #include "Wire.h"
 #include "Kalman.h"
 #include "MPU6050.h"
-#include <EEPROM.h>
 
 MPU6050 mpu;
 Kalman kalmanX;
@@ -35,8 +33,18 @@ void setup() {
   mpu.initialize();
   int offsets[6];
   Serial.begin(9600);
-  EEPROM.get(START_BYTE, offsets);
+  mpu.setXAccelOffset(0);
+  mpu.setYAccelOffset(0);
+  mpu.setZAccelOffset(0);
+  mpu.setXGyroOffset(0);
+  mpu.setYGyroOffset(0);
+  mpu.setZGyroOffset(0);
+
+
+  mpu.getMotion6(&accX, &accY, &accZ, &gyroX, &gyroY, &gyroZ);
   calibration();
+
+  delay(1000);
   
   kalmanX.setAngle(0); // Set starting angle
   kalmanY.setAngle(0);
@@ -78,6 +86,10 @@ void calculateAngles() {
   // Calculate gyro angle without any filter
   gyroXangle += gyroXrate * elapsedTime;
   gyroYangle += gyroYrate * elapsedTime;
+  
+  //normalize angle with gyro
+  gyroXangle = normalizeAngle(gyroXangle);
+  gyroYangle = normalizeAngle(gyroYangle);
 
   // Calculate the angle using a Kalman filter
   kalAngleX = kalmanX.getAngle(accXangle, gyroXrate, elapsedTime);
@@ -85,16 +97,13 @@ void calculateAngles() {
   
 }
 
-// =======  ФУНКЦИЯ КАЛИБРОВКИ И ЗАПИСИ В ЕЕПРОМ =======
 void calibration() {
   long offsets[6];
   long offsetsOld[6];
   int16_t mpuGet[6];
-
   // используем стандартную точность
   mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
   mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_250);
-
   // обнуляем оффсеты
   mpu.setXAccelOffset(0);
   mpu.setYAccelOffset(0);
@@ -102,8 +111,7 @@ void calibration() {
   mpu.setXGyroOffset(0);
   mpu.setYGyroOffset(0);
   mpu.setZGyroOffset(0);
-  delay(5);
-
+  delay(10);
   for (byte n = 0; n < 10; n++) {     // 10 итераций калибровки
     for (byte j = 0; j < 6; j++) {    // обнуляем калибровочный массив
       offsets[j] = 0;
@@ -111,20 +119,18 @@ void calibration() {
     for (byte i = 0; i < 100 + BUFFER_SIZE; i++) {
       // делаем BUFFER_SIZE измерений для усреднения
       mpu.getMotion6(&mpuGet[0], &mpuGet[1], &mpuGet[2], &mpuGet[3], &mpuGet[4], &mpuGet[5]);
-
-      if (i >= 99) {                         // пропускаем первые 99 измерений
+      // пропускаем первые 99 измерений
+      if (i >= 99) {
         for (byte j = 0; j < 6; j++) {
-          offsets[j] += (long)mpuGet[j];   // записываем в калибровочный массив
+          offsets[j] += (long)mpuGet[j];    // записываем в калибровочный массив
         }
       }
     }
-
     for (byte i = 0; i < 6; i++) {
       offsets[i] = offsetsOld[i] - ((long)offsets[i] / BUFFER_SIZE); // учитываем предыдущую калибровку
       if (i == 2) offsets[i] += 16384;                               // если ось Z, калибруем в 16384
       offsetsOld[i] = offsets[i];
     }
-
     // ставим новые оффсеты
     mpu.setXAccelOffset(offsets[0] / 8);
     mpu.setYAccelOffset(offsets[1] / 8);
@@ -134,13 +140,10 @@ void calibration() {
     mpu.setZGyroOffset(offsets[5] / 4);
     delay(2);
   }
+}
 
-  // пересчитываем для хранения
-  for (byte i = 0; i < 6; i++) {
-    if (i < 3) offsets[i] /= 8;
-    else offsets[i] /= 4;
-  }
-
-  // запись в память
-  EEPROM.put(START_BYTE, offsets);
+float normalizeAngle(float angle) {
+  while (angle > 180) angle -= 360;
+  while (angle < -180) angle += 360;
+  return angle;
 }
