@@ -6,6 +6,8 @@
 #include "MPU6050.h"
 #include <Servo.h>
 
+Servo esc_12;
+Servo esc_11; 
 Servo esc_10;
 Servo esc_9; 
 
@@ -35,7 +37,9 @@ uint32_t timer;
 void setup() {
 
   esc_9.attach(9); 
-  esc_10.attach(10); 
+  esc_10.attach(10);   
+  esc_9.attach(11); 
+  esc_10.attach(12); 
 
   
   mpu.initialize();
@@ -58,11 +62,15 @@ void setup() {
   kalmanY.setAngle(0);
   timer = micros();
 
-  esc_9.writeMicroseconds (2300) ;  
-  esc_10.writeMicroseconds (2300) ;  
-  delay (2000) ;
-  esc_9.writeMicroseconds (800) ;
-  esc_10.writeMicroseconds (800) ;
+  esc_9.writeMicroseconds (2300);  
+  esc_10.writeMicroseconds (2300); 
+  esc_11.writeMicroseconds (2300);  
+  esc_12.writeMicroseconds (2300);  
+  delay (2000);
+  esc_9.writeMicroseconds (800);
+  esc_10.writeMicroseconds (800);
+  esc_11.writeMicroseconds (800);
+  esc_12.writeMicroseconds (800);
   delay(2000); 
   
   Serial.print("accXangle");
@@ -80,7 +88,9 @@ void loop() {
 
   
   esc_9.write(2250);
-  esc_10.write(2250);
+  esc_10.write(2250);  
+  esc_11.write(2250);
+  esc_12.write(2250);
 
   delay(20); // The accelerometer's maximum samples rate is 1kHz
 }
