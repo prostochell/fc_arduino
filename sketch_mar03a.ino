@@ -150,7 +150,7 @@ void calibration() {
       if (i == 2) offsets[i] += 16384;                               // if Z axis, calibrate to 16384
       offsetsOld[i] = offsets[i];
     }
-    // ставим новые оффсеты
+    // new offsets
     mpu.setXAccelOffset(offsets[0] / 8);
     mpu.setYAccelOffset(offsets[1] / 8);
     mpu.setZAccelOffset(offsets[2] / 8);
