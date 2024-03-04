@@ -38,8 +38,8 @@ void setup() {
 
   esc_9.attach(9); 
   esc_10.attach(10);   
-  esc_9.attach(11); 
-  esc_10.attach(12); 
+  esc_11.attach(11); 
+  esc_12.attach(12);
 
   
   mpu.initialize();
