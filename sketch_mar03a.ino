@@ -7,9 +7,9 @@
 #include <Servo.h>
 
 Servo esc_12;
-Servo esc_11; 
+Servo esc_11;
 Servo esc_10;
-Servo esc_9; 
+Servo esc_9;
 
 MPU6050 mpu;
 Kalman kalmanX;
@@ -32,78 +32,32 @@ float gyroYangle = 0;
 float kalAngleX = 0; // Calculate the angle using a Kalman filter
 float kalAngleY = 0;
 
+//Value for PiD control
+float Kp_r, Ki_r, Kd_r; //Roll control
+float Kp_p, Ki_p, Kd_p; //Pitch control
+float Kp_y, Ki_y, Kd_y; //Yaw control
+
+int T1;  //Value for first motor
+int T2;  //Value for second motor
+int T3;  //Value for third motor
+int T4;  //Value for fourth motor
+
+float base_throttle = 0;
+float pid_roll, pid_pitch, pid_yaw, error_roll, error_pitch, error_yaw, integral_roll, desired_roll, desired_pitch, desired_yaw;
+float current_roll, current_pitch, current_yaw;
+    float  integral_yaw, integral_pitch=0;
+
+
 
 uint32_t timer;
-void setup() {
-
-  esc_9.attach(9); 
-  esc_10.attach(10);   
-  esc_11.attach(11); 
-  esc_12.attach(12);
-
-  
-  mpu.initialize();
-  int offsets[6];
-  Serial.begin(9600);
-  mpu.setXAccelOffset(0);
-  mpu.setYAccelOffset(0);
-  mpu.setZAccelOffset(0);
-  mpu.setXGyroOffset(0);
-  mpu.setYGyroOffset(0);
-  mpu.setZGyroOffset(0);
-
-
-  mpu.getMotion6(&accX, &accY, &accZ, &gyroX, &gyroY, &gyroZ);
-  calibration();
-
-  delay(1000);
-  
-  kalmanX.setAngle(0); // Set starting angle
-  kalmanY.setAngle(0);
-  timer = micros();
-
-  esc_9.writeMicroseconds (2300);  
-  esc_10.writeMicroseconds (2300); 
-  esc_11.writeMicroseconds (2300);  
-  esc_12.writeMicroseconds (2300);  
-  delay (2000);
-  esc_9.writeMicroseconds (800);
-  esc_10.writeMicroseconds (800);
-  esc_11.writeMicroseconds (800);
-  esc_12.writeMicroseconds (800);
-  delay(2000); 
-  
-  Serial.print("accXangle");
-  Serial.print(",");
-  Serial.print("kalmanXacc");
-  Serial.println();
-  
-}
-void loop() {
-  mpu.getMotion6(&accX, &accY, &accZ, &gyroX, &gyroY, &gyroZ);
-  calculateAngles();
-
-  Serial.print(accXangle);  Serial.print(",");
-  Serial.print(kalAngleX);  Serial.println();
-
-  
-  esc_9.write(2250);
-  esc_10.write(2250);  
-  esc_11.write(2250);
-  esc_12.write(2250);
-
-  delay(20); // The accelerometer's maximum samples rate is 1kHz
-}
-
-//Function for get vaules with iic
 
 void calculateAngles() {
   /* Calculate the angls based on the different sensors and algorithm */
 
 
   //Calculate acc angle without any filter
-  accYangle = (atan2(accX, accZ) + PI) * RAD_TO_DEG-180;
-  accXangle = (atan2(accY, accZ) + PI) * RAD_TO_DEG-180;
+  accYangle = (atan2(accX, accZ) + PI) * RAD_TO_DEG - 180;
+  accXangle = (atan2(accY, accZ) + PI) * RAD_TO_DEG - 180;
   float gyroXrate = (float)gyroX / 131.0;
   float gyroYrate = -((float)gyroY / 131.0);
   unsigned long currentTime = micros();
@@ -113,7 +67,7 @@ void calculateAngles() {
   // Calculate the angle using a Kalman filter
   kalAngleX = kalmanX.getAngle(accXangle, gyroXrate, elapsedTime);
   kalAngleY = kalmanY.getAngle(accYangle, gyroYrate, elapsedTime);
-  
+
 }
 
 void calibration() {
@@ -160,4 +114,130 @@ void calibration() {
     delay(2);
 
   }
+}
+
+void calculatePID() {
+
+  float previous_error_roll = 0;
+  float  previous_error_pitch = 0;
+  float previous_error_yaw = 0;
+
+  error_roll = desired_roll - current_roll;
+  error_pitch = desired_pitch - current_pitch;
+  error_yaw = desired_yaw - current_yaw;
+
+
+  integral_roll += error_roll;
+  pid_roll = Kp_r * error_roll + Ki_r * integral_roll + Kd_r * (error_roll - previous_error_roll);
+  previous_error_roll = error_roll;
+
+
+  integral_pitch += error_pitch;
+  pid_pitch = Kp_p * error_pitch + Ki_p * integral_pitch + Kd_p * (error_pitch - previous_error_pitch);
+  previous_error_pitch = error_pitch;
+
+
+  integral_yaw += error_yaw;
+  pid_yaw = Kp_y * error_yaw + Ki_y * integral_yaw + Kd_y * (error_yaw - previous_error_yaw);
+  previous_error_yaw = error_yaw;
+}
+
+
+
+
+
+
+void setup() {
+
+  esc_9.attach(6);
+  esc_10.attach(8);
+  esc_11.attach(10);
+  esc_12.attach(12);
+
+
+  mpu.initialize();
+  int offsets[6];
+  Serial.begin(9600);
+  mpu.setXAccelOffset(0);
+  mpu.setYAccelOffset(0);
+  mpu.setZAccelOffset(0);
+  mpu.setXGyroOffset(0);
+  mpu.setYGyroOffset(0);
+  mpu.setZGyroOffset(0);
+
+
+  mpu.getMotion6(&accX, &accY, &accZ, &gyroX, &gyroY, &gyroZ);
+  calibration();
+
+  delay(1000);
+
+  kalmanX.setAngle(0); // Set starting angle
+  kalmanY.setAngle(0);
+  timer = micros();
+
+
+  esc_9.writeMicroseconds (2300);
+  esc_10.writeMicroseconds (2300);
+  esc_11.writeMicroseconds (2300);
+  esc_12.writeMicroseconds (2300);
+  delay (2000);
+  esc_9.writeMicroseconds (800);
+  esc_10.writeMicroseconds (800);
+  esc_11.writeMicroseconds (800);
+  esc_12.writeMicroseconds (800);
+  delay(2000);
+
+/*
+  Serial.print("T1, ");
+  Serial.print("T2, ");
+  Serial.print("T3, ");
+  Serial.print("T4, ");
+  Serial.println();
+  Serial.print("accXangle");
+  Serial.print(" ");
+  Serial.print("kalmanXacc");
+  Serial.println();*/
+
+Serial.print("roll");
+}
+void loop() {
+  mpu.getMotion6(&accX, &accY, &accZ, &gyroX, &gyroY, &gyroZ);
+  calculateAngles();
+
+  /*Serial.print(accXangle);  Serial.print(" ");
+  Serial.print(kalAngleX);  Serial.println();
+*/
+float  roll = atan2(accY, accZ) * 180 / PI;
+float  pitch = atan2(-accX, sqrt(accY * accY + accZ * accZ)) * 180 / PI;
+
+Serial.println(pitch);
+  current_pitch = pitch;
+  current_roll = roll;
+  calculatePID();
+
+  T1 = base_throttle + pid_pitch - pid_roll - pid_yaw;
+  T2 = base_throttle + pid_pitch + pid_roll + pid_yaw;
+  T3 = base_throttle - pid_pitch + pid_roll - pid_yaw;
+  T4 = base_throttle - pid_pitch - pid_roll + pid_yaw;
+
+  desired_roll = roll;
+  desired_pitch = pitch;
+
+
+/*
+  Serial.print(T1);
+  Serial.print(", ");
+  Serial.print(T2);
+  Serial.print(", ");
+  Serial.print(T3);
+  Serial.print(", ");
+  Serial.print(T4);
+  Serial.println();
+*/
+  esc_9.write(2000);
+  esc_10.write(2000);
+  esc_11.write(2000);
+  esc_12.write(2000);
+
+  delay(20); // The accelerometer's maximum samples rate is 1kHz
 }
