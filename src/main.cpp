@@ -1,5 +1,4 @@
 #include <Arduino.h>
-
 #define COMPL_K 0.09
 #define BUFFER_SIZE 100
 
@@ -7,6 +6,7 @@
 #include "Kalman.h"
 #include "MPU6050.h"
 #include <Servo.h>
+
 
 Servo esc_12;
 Servo esc_11;
@@ -35,19 +35,25 @@ float kalAngleX = 0; // Calculate the angle using a Kalman filter
 float kalAngleY = 0;
 
 //Value for PiD control
-float Kp_r, Ki_r, Kd_r; //Roll control
-float Kp_p, Ki_p, Kd_p; //Pitch control
-float Kp_y, Ki_y, Kd_y; //Yaw control
+float Kp_r = 1.0; //Roll control
+float Kd_r = 0.5;
+float Ki_r = 0.1;
+float Kp_p = 1.0; //Pitch control
+float Kd_p = 0.5;
+float Ki_p = 0.1;
+float Kp_y = 1.0; //Yaw control
+float Kd_y = 0.5;
+float Ki_y = 0.1;
 
 int T1;  //Value for first motor
 int T2;  //Value for second motor
 int T3;  //Value for third motor
 int T4;  //Value for fourth motor
 
-float base_throttle = 0;
+float base_throttle = 1000;
 float pid_roll, pid_pitch, pid_yaw, error_roll, error_pitch, error_yaw, integral_roll, desired_roll, desired_pitch, desired_yaw;
 float current_roll, current_pitch, current_yaw;
-    float  integral_yaw, integral_pitch=0;
+float  integral_yaw, integral_pitch=0;
 
 
 
@@ -118,6 +124,18 @@ void calibration() {
   }
 }
 
+
+double calc_pid(double input_angle, double set_angle,double  Kp,double  Ki,double  Kd,double  dt){
+    double err = set_angle - input_angle;
+    double integral_ = 0.0;
+    double prev_err = 0.0;
+    integral_ += err * dt;
+    double D = (err - prev_err) / dt;
+    prev_err = err;
+    return (err * Kp + integral_ * Ki + D * Kd);
+}
+
+    
 void calculatePID() {
 
   float previous_error_roll = 0;
@@ -200,33 +218,37 @@ void setup() {
   Serial.print("kalmanXacc");
   Serial.println();*/
 
-Serial.print("roll");
+
 }
 void loop() {
   mpu.getMotion6(&accX, &accY, &accZ, &gyroX, &gyroY, &gyroZ);
   calculateAngles();
 
-  /*Serial.print(accXangle);  Serial.print(" ");
-  Serial.print(kalAngleX);  Serial.println();
-*/
-float  roll = atan2(accY, accZ) * 180 / PI;
-float  pitch = atan2(-accX, sqrt(accY * accY + accZ * accZ)) * 180 / PI;
+  
+  desired_roll = 0;
+  desired_pitch = 0;
+  current_pitch = kalAngleX;
+  current_roll = kalAngleY;
+  
+  double pid_roll_1 = calc_pid(current_roll,desired_roll,Kp_r,Ki_r,Kd_r,20);
+double pid_pitch_1 = calc_pid(current_pitch,desired_roll,Kp_r,Ki_r,Kd_r,20);
+  T1 = base_throttle - pid_pitch_1 + pid_roll_1;
+  T2 = base_throttle + pid_pitch_1 + pid_roll_1 ;
+  T3 = base_throttle + pid_pitch_1 - pid_roll_1 ;
+  T4 = base_throttle - pid_pitch_1 - pid_roll_1;
 
-Serial.println(pitch);
-  current_pitch = pitch;
-  current_roll = roll;
-  calculatePID();
+//String s = Serial.readString();
+//Serial.println(s);
+ 
+  Serial.print(current_pitch);  Serial.print(" ");
+  Serial.print(current_roll);   Serial.print(" ");
+  Serial.print(desired_roll);   Serial.print(" ");
+  Serial.print(desired_pitch);   Serial.println();
 
-  T1 = base_throttle + pid_pitch - pid_roll - pid_yaw;
-  T2 = base_throttle + pid_pitch + pid_roll + pid_yaw;
-  T3 = base_throttle - pid_pitch + pid_roll - pid_yaw;
-  T4 = base_throttle - pid_pitch - pid_roll + pid_yaw;
-
-  desired_roll = roll;
-  desired_pitch = pitch;
 
 
 /*
+
   Serial.print(T1);
   Serial.print(", ");
   Serial.print(T2);
@@ -234,7 +256,12 @@ Serial.println(pitch);
   Serial.print(T3);
   Serial.print(", ");
   Serial.print(T4);
+  Serial.print(", ");
+  Serial.print(current_roll);
+  Serial.print(", ");
+  Serial.print(current_pitch);
   Serial.println();
+  
 */
   esc_9.write(2000);
   esc_10.write(2000);
