@@ -16,7 +16,6 @@ MPU6050 mpu;
 Kalman kalmanX;
 Kalman kalmanY;
 
-
 int16_t accX;
 int16_t accY;
 int16_t accZ;
@@ -49,10 +48,10 @@ int T2;  //Value for second motor
 int T3;  //Value for third motor
 int T4;  //Value for fourth motor
 
-float base_throttle = 1000;
+float base_throttle = 900;
 float pid_roll, pid_pitch, pid_yaw, error_roll, error_pitch, error_yaw, integral_roll, desired_roll, desired_pitch, desired_yaw;
 float current_roll, current_pitch, current_yaw;
-float  integral_yaw, integral_pitch=0;
+float  integral_yaw, integral_pitch = 0;
 
 
 
@@ -124,17 +123,17 @@ void calibration() {
 }
 
 
-double calc_pid(double input_angle, double set_angle,double  Kp,double  Ki,double  Kd,double  dt){
-    double err = set_angle - input_angle;
-    double integral_ = 0.0;
-    double prev_err = 0.0;
-    integral_ += err * dt;
-    double D = (err - prev_err) / dt;
-    prev_err = err;
-    return (err * Kp + integral_ * Ki + D * Kd);
+double calc_pid(double input_angle, double set_angle, double  Kp, double  Ki, double  Kd, double  dt) {
+  double err = set_angle - input_angle;
+  double integral_ = 0.0;
+  double prev_err = 0.0;
+  integral_ += err * dt;
+  double D = (err - prev_err) / dt;
+  prev_err = err;
+  return (err * Kp + integral_ * Ki + D * Kd);
 }
 
-    
+
 void calculatePID() {
 
   float previous_error_roll = 0;
@@ -167,6 +166,7 @@ void calculatePID() {
 
 
 void setup() {
+  int offsets[6];
 
   esc_9.attach(6);
   esc_10.attach(8);
@@ -175,8 +175,8 @@ void setup() {
 
 
   mpu.initialize();
-  int offsets[6];
-  Serial.begin(9600);
+  Serial.begin(115200);
+
   mpu.setXAccelOffset(0);
   mpu.setYAccelOffset(0);
   mpu.setZAccelOffset(0);
@@ -194,7 +194,6 @@ void setup() {
   kalmanY.setAngle(0);
   timer = micros();
 
-
   esc_9.writeMicroseconds (2300);
   esc_10.writeMicroseconds (2300);
   esc_11.writeMicroseconds (2300);
@@ -206,16 +205,16 @@ void setup() {
   esc_12.writeMicroseconds (800);
   delay(2000);
 
-/*
-  Serial.print("T1, ");
-  Serial.print("T2, ");
-  Serial.print("T3, ");
-  Serial.print("T4, ");
-  Serial.println();
-  Serial.print("accXangle");
-  Serial.print(" ");
-  Serial.print("kalmanXacc");
-  Serial.println();*/
+  /*
+    Serial.print("T1, ");
+    Serial.print("T2, ");
+    Serial.print("T3, ");
+    Serial.print("T4, ");
+    Serial.println();
+    Serial.print("accXangle");
+    Serial.print(" ");
+    Serial.print("kalmanXacc");
+    Serial.println();*/
 
 
 }
@@ -223,30 +222,36 @@ void loop() {
   mpu.getMotion6(&accX, &accY, &accZ, &gyroX, &gyroY, &gyroZ);
   calculateAngles();
 
-  
+  if (Serial.available() > 0) {
+    base_throttle = (float)Serial.parseInt();
+    Serial.println(base_throttle);
+  }
+
   desired_roll = 0;
   desired_pitch = 0;
   current_pitch = kalAngleX;
   current_roll = kalAngleY;
-  
-  double pid_roll_1 = calc_pid(current_roll,desired_roll,Kp_r,Ki_r,Kd_r,20);
-double pid_pitch_1 = calc_pid(current_pitch,desired_roll,Kp_r,Ki_r,Kd_r,20);
+
+  double pid_roll_1 = calc_pid(current_roll, desired_roll, Kp_r, Ki_r, Kd_r, 20);
+  double pid_pitch_1 = calc_pid(current_pitch, desired_roll, Kp_r, Ki_r, Kd_r, 20);
   T1 = base_throttle - pid_pitch_1 + pid_roll_1;
   T2 = base_throttle + pid_pitch_1 + pid_roll_1 ;
   T3 = base_throttle + pid_pitch_1 - pid_roll_1 ;
   T4 = base_throttle - pid_pitch_1 - pid_roll_1;
 
-//String s = Serial.readString();
-//Serial.println(s);
- 
-  Serial.print(current_pitch);  Serial.print(" ");
-  Serial.print(current_roll);   Serial.print(" ");
-  Serial.print(desired_roll);   Serial.print(" ");
-  Serial.print(desired_pitch);   Serial.println();
+  //String s = Serial.readString();
+  //Serial.println(s);
+
+  /*
+    Serial.print(current_pitch);  Serial.print(" ");
+    Serial.print(current_roll);   Serial.print(" ");
+    Serial.print(desired_roll);   Serial.print(" ");
+    Serial.print(desired_pitch);   Serial.println();
 
 
+  */
 
-/*
+
 
   Serial.print(T1);
   Serial.print(", ");
@@ -255,17 +260,12 @@ double pid_pitch_1 = calc_pid(current_pitch,desired_roll,Kp_r,Ki_r,Kd_r,20);
   Serial.print(T3);
   Serial.print(", ");
   Serial.print(T4);
-  Serial.print(", ");
-  Serial.print(current_roll);
-  Serial.print(", ");
-  Serial.print(current_pitch);
   Serial.println();
-  
-*/
-  esc_9.write(2000);
-  esc_10.write(2000);
-  esc_11.write(2000);
-  esc_12.write(2000);
+
+  esc_9.write(T1);
+  esc_10.write(T2);
+  esc_11.write(T3);
+  esc_12.write(T4);
 
   delay(20); // The accelerometer's maximum samples rate is 1kHz
 }
