@@ -8,9 +8,9 @@
 
 
 Servo esc_12;
-Servo esc_11;
 Servo esc_10;
-Servo esc_9;
+Servo esc_8;
+Servo esc_6;
 
 MPU6050 mpu;
 Kalman kalmanX;
@@ -43,10 +43,10 @@ float Kp_y = 1.0; //Yaw control
 float Kd_y = 0.5;
 float Ki_y = 0.1;
 
-int T1;  //Value for first motor
-int T2;  //Value for second motor
-int T3;  //Value for third motor
-int T4;  //Value for fourth motor
+int esc_12;  //Value for first motor
+int esc_10;  //Value for second motor
+int esc_8;  //Value for third motor
+int esc_6;  //Value for fourth motor
 
 float base_throttle = 900;
 float pid_roll, pid_pitch, pid_yaw, error_roll, error_pitch, error_yaw, integral_roll, desired_roll, desired_pitch, desired_yaw;
@@ -168,9 +168,9 @@ void calculatePID() {
 void setup() {
   int offsets[6];
 
-  esc_9.attach(6);
-  esc_10.attach(8);
-  esc_11.attach(10);
+  esc_6.attach(6);
+  esc_8.attach(8);
+  esc_10.attach(10);
   esc_12.attach(12);
 
 
@@ -234,10 +234,10 @@ void loop() {
 
   double pid_roll_1 = calc_pid(current_roll, desired_roll, Kp_r, Ki_r, Kd_r, 20);
   double pid_pitch_1 = calc_pid(current_pitch, desired_roll, Kp_r, Ki_r, Kd_r, 20);
-  T1 = base_throttle - pid_pitch_1 + pid_roll_1;
-  T2 = base_throttle + pid_pitch_1 + pid_roll_1 ;
-  T3 = base_throttle + pid_pitch_1 - pid_roll_1 ;
-  T4 = base_throttle - pid_pitch_1 - pid_roll_1;
+  esc_6 = base_throttle - pid_pitch_1 + pid_roll_1;
+  esc_8 = base_throttle + pid_pitch_1 + pid_roll_1 ;
+  esc_10 = base_throttle + pid_pitch_1 - pid_roll_1 ;
+  esc_12 = base_throttle - pid_pitch_1 - pid_roll_1;
 
   //String s = Serial.readString();
   //Serial.println(s);
@@ -253,19 +253,19 @@ void loop() {
 
 
 
-  Serial.print(T1);
+  Serial.print(esc_12);
   Serial.print(", ");
-  Serial.print(T2);
+  Serial.print(esc_10);
   Serial.print(", ");
-  Serial.print(T3);
+  Serial.print(esc_8);
   Serial.print(", ");
-  Serial.print(T4);
+  Serial.print(esc_6);
   Serial.println();
 
-  esc_9.write(T1);
-  esc_10.write(T2);
-  esc_11.write(T3);
-  esc_12.write(T4);
+  esc_6.write(esc_6);
+  esc_8.write(esc_8);
+  esc_10.write(esc_10);
+  esc_12.write(esc_12);
 
   delay(20); // The accelerometer's maximum samples rate is 1kHz
 }
