@@ -43,12 +43,12 @@ float Kp_y = 1.0; //Yaw control
 float Kd_y = 0.5;
 float Ki_y = 0.1;
 
-int esc_12;  //Value for first motor
-int esc_10;  //Value for second motor
-int esc_8;  //Value for third motor
-int esc_6;  //Value for fourth motor
+int esc_1_mot;  //Value for first motor
+int esc_2_mot;  //Value for second motor
+int esc_3_mot;  //Value for third motor
+int esc_4_mot;  //Value for fourth motor
 
-float base_throttle = 900;
+float base_throttle = 0;
 float pid_roll, pid_pitch, pid_yaw, error_roll, error_pitch, error_yaw, integral_roll, desired_roll, desired_pitch, desired_yaw;
 float current_roll, current_pitch, current_yaw;
 float  integral_yaw, integral_pitch = 0;
@@ -167,15 +167,15 @@ void calculatePID() {
 
 void setup() {
   int offsets[6];
+  Serial.begin(115200);
 
   esc_1.attach(12);
   esc_2.attach(6);
   esc_3.attach(10);
   esc_4.attach(8);
-
+  Serial.println("setup");
 
   mpu.initialize();
-  Serial.begin(115200);
 
   mpu.setXAccelOffset(0);
   mpu.setYAccelOffset(0);
@@ -194,11 +194,12 @@ void setup() {
   kalmanY.setAngle(0);
   timer = micros();
 
+  Serial.println("setup");
+
   esc_1.writeMicroseconds (2300);
   esc_2.writeMicroseconds (2300);
   esc_3.writeMicroseconds (2300);
   esc_4.writeMicroseconds (2300);
-  delay (2000);
   esc_1.writeMicroseconds (800);
   esc_2.writeMicroseconds (800);
   esc_3.writeMicroseconds (800);
@@ -221,7 +222,7 @@ void setup() {
 void loop() {
   mpu.getMotion6(&accX, &accY, &accZ, &gyroX, &gyroY, &gyroZ);
   calculateAngles();
-
+Serial.println("loop1");
   if (Serial.available() > 0) {
     base_throttle = (float)Serial.parseInt();
     Serial.println(base_throttle);
@@ -234,10 +235,10 @@ void loop() {
 
   double pid_roll_1 = calc_pid(current_roll, desired_roll, Kp_r, Ki_r, Kd_r, 20);
   double pid_pitch_1 = calc_pid(current_pitch, desired_roll, Kp_r, Ki_r, Kd_r, 20);
-  esc_1 = base_throttle - pid_pitch_1 + pid_roll_1;
-  esc_2 = base_throttle + pid_pitch_1 + pid_roll_1 ;
-  esc_3 = base_throttle + pid_pitch_1 - pid_roll_1 ;
-  esc_4 = base_throttle - pid_pitch_1 - pid_roll_1;
+  esc_1_mot = base_throttle + pid_pitch_1 - pid_roll_1;
+  esc_2_mot = base_throttle + pid_pitch_1 + pid_roll_1 ;
+  esc_3_mot = base_throttle - pid_pitch_1 - pid_roll_1 ;
+  esc_4_mot = base_throttle - pid_pitch_1 + pid_roll_1;
 
   //String s = Serial.readString();
   //Serial.println(s);
@@ -248,24 +249,24 @@ void loop() {
     Serial.print(desired_roll);   Serial.print(" ");
     Serial.print(desired_pitch);   Serial.println();
 
-
   */
 
 
 
-  Serial.print(esc_1);
+
+  Serial.print(esc_1_mot);
   Serial.print(", ");
-  Serial.print(esc_2);
+  Serial.print(esc_2_mot);
   Serial.print(", ");
-  Serial.print(esc_3);
+  Serial.print(esc_3_mot);
   Serial.print(", ");
-  Serial.print(esc_4);
+  Serial.print(esc_4_mot);
   Serial.println();
 
-  esc_1.write(esc_1);
-  esc_2.write(esc_2);
-  esc_3.write(esc_3);
-  esc_4.write(esc_4);
+  esc_1.write(esc_3_mot);
+  esc_2.write(esc_2_mot);
+  esc_3.write(esc_4_mot);
+  esc_4.write(esc_1_mot);
 
   delay(20); // The accelerometer's maximum samples rate is 1kHz
 }
