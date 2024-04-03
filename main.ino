@@ -174,7 +174,6 @@ void setup() {
   esc_3.attach(10);
   esc_4.attach(8);
   Serial.println("setup");
-
   mpu.initialize();
 
   mpu.setXAccelOffset(0);
@@ -205,27 +204,19 @@ void setup() {
   esc_3.writeMicroseconds (800);
   esc_4.writeMicroseconds (800);
   delay(2000);
-
-  /*
-    Serial.print("T1, ");
-    Serial.print("T2, ");
-    Serial.print("T3, ");
-    Serial.print("T4, ");
-    Serial.println();
-    Serial.print("accXangle");
-    Serial.print(" ");
-    Serial.print("kalmanXacc");
-    Serial.println();*/
-
-
 }
+
 void loop() {
   mpu.getMotion6(&accX, &accY, &accZ, &gyroX, &gyroY, &gyroZ);
   calculateAngles();
-Serial.println("loop1");
-  if (Serial.available() > 0) {
-    base_throttle = (float)Serial.parseInt();
+//Serial.println("loop1");
+  if (Serial.available()) {    
+    base_throttle = Serial.parseFloat();
     Serial.println(base_throttle);
+    String strData = "";
+    strData += (char)Serial.read();
+    Serial.println(strData);
+    delay(100);
   }
 
   desired_roll = 0;
@@ -239,9 +230,6 @@ Serial.println("loop1");
   esc_2_mot = base_throttle + pid_pitch_1 + pid_roll_1 ;
   esc_3_mot = base_throttle - pid_pitch_1 - pid_roll_1 ;
   esc_4_mot = base_throttle - pid_pitch_1 + pid_roll_1;
-
-  //String s = Serial.readString();
-  //Serial.println(s);
 
   /*
     Serial.print(current_pitch);  Serial.print(" ");
