@@ -221,11 +221,9 @@ void loop() {
 
   if (Serial.available()) {    
     base_throttle = Serial.parseFloat();
-    Serial.println(base_throttle);
-    String strData = "";
-    strData += (char)Serial.read();
-    Serial.println(strData);
+    Serial.print(base_throttle);
     delay(100);
+   
   }
 
   desired_roll = 0;
