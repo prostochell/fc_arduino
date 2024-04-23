@@ -1,5 +1,5 @@
 
-#define COMPL_K 0.09
+#define COMPL_K 0.12
 #define BUFFER_SIZE 100
 
 #include <Arduino.h>
@@ -18,6 +18,8 @@ MPU6050 mpu;
 Kalman kalmanX;
 Kalman kalmanY;
 
+  int esc =0;
+
 int16_t accX;
 int16_t accY;
 int16_t accZ;
@@ -35,22 +37,22 @@ float kalAngleX = 0; // Calculate the angle using a Kalman filter
 float kalAngleY = 0;
 
 //Value for PiD control
-float Kp_r = 0.5; //Roll control
-float Kd_r = 0.1;
-float Ki_r = 0.1;
-float Kp_p = 0.5; //Pitch control
-float Kd_p = 0.1;
-float Ki_p = 0.1;
-float Kp_y = 1.0; //Yaw control
-float Kd_y = 0.5;
-float Ki_y = 0.1;
+float Kp_r = 0.0; //Roll control
+float Kd_r = 0.0;
+float Ki_r = 0.0;
+float Kp_p = 0.0; //Pitch control
+float Kd_p = 0.0;
+float Ki_p = 0.0;
+float Kp_y = 0.0; //Yaw control
+float Kd_y = 0.0;
+float Ki_y = 0.0;
 
 int esc_1_mot;  //Value for first motor
 int esc_2_mot;  //Value for second motor
 int esc_3_mot;  //Value for third motor
 int esc_4_mot;  //Value for fourth motor
 
-float base_throttle = 1000;
+float base_throttle = 800;
 float pid_roll, pid_pitch, pid_yaw, error_roll, error_pitch, error_yaw, integral_roll, desired_roll, desired_pitch, desired_yaw;
 float current_roll, current_pitch, current_yaw;
 float  integral_yaw, integral_pitch = 0;
@@ -185,12 +187,12 @@ void setup() {
   mpu.setYGyroOffset(0);
   mpu.setZGyroOffset(0);
 
-  delay(3000);
+  delay(1000);
   
   mpu.getMotion6(&accX, &accY, &accZ, &gyroX, &gyroY, &gyroZ);
   calibration();
 
-  delay(7000);
+  delay(4000);
   Serial.println("Calibreated");
   kalmanX.setAngle(0); // Set starting angle
   kalmanY.setAngle(0);
@@ -207,10 +209,10 @@ void setup() {
   esc_3.writeMicroseconds (800);
   esc_4.writeMicroseconds (800);
   delay(2000);
-  esc_1.writeMicroseconds (800);
-  esc_2.writeMicroseconds (800);
-  esc_3.writeMicroseconds (800);
-  esc_4.writeMicroseconds (800);
+  esc_1.writeMicroseconds (2250);
+  esc_2.writeMicroseconds (2250);
+  esc_3.writeMicroseconds (2250);
+  esc_4.writeMicroseconds (2250);
   delay(2000);
 }
 
@@ -218,13 +220,98 @@ void loop() {
   mpu.getMotion6(&accX, &accY, &accZ, &gyroX, &gyroY, &gyroZ);
   calculateAngles();
 //Serial.println("loop1");
-
-  if (Serial.available()) {    
-    base_throttle = Serial.parseFloat();
-    Serial.print(base_throttle);
+  if (Serial.available()) {
+                                                  // Trottle: t1000;    
+    String command = Serial.readStringUntil(';'); // C: kpr kpp kir kip kdr kdp 
+    if(command[0] == 't') {                       // I/D:  +/- (0.1)
+    base_throttle = command.substring(1).toFloat(); // S: ";"
+    Serial.println(base_throttle);                  // Example: kpr+;
     delay(100);
-   
+    }
+        
+    else if(command == "kpr+") {       
+    Kp_r += 0.1;
+    Serial.println(Kp_r);
+    delay(100);
+    }
+    
+    else if(command == "kir+") {       
+    Ki_r += 0.1;
+    Serial.println(Ki_r);
+    delay(100);
+    }
+    
+    else if(command == "kdr+") {       
+    Kd_r += 0.1;
+    Serial.println(Kd_r);
+    delay(100);
+    }
+  
+    else if(command == "kpr-") {       
+    Kp_r -= 0.1;
+    Serial.println(Kp_r);
+    delay(100);
+    }
+    
+    else if(command == "kir-") {       
+    Ki_r -= 0.1;
+    Serial.println(Ki_r);
+    delay(100);
+    }
+    
+    else if(command == "kdr-") {       
+    Kd_r -= 0.1;
+    Serial.println(Kd_r);
+    delay(100);
+    }
+
+    else if(command == "kpp+") {       
+    Kp_p += 0.1;
+    Serial.println(Kp_p);
+    delay(100);
+    }
+    
+    else if(command == "kip+") {       
+    Ki_p += 0.1;
+    Serial.println(Ki_p);
+    delay(100);
+    }
+    
+    else if(command == "kdp+") {       
+    Kd_p += 0.1;
+    Serial.println(Kd_p);
+    delay(100);
+    }
+  
+    else if(command == "kpp-") {       
+    Kp_p -= 0.1;
+    Serial.println(Kp_p);
+    delay(100);
+    }
+    
+    else if(command == "kip-") {       
+    Ki_p -= 0.1;
+    Serial.println(Ki_p);
+    delay(100);
+    }
+    
+    else if(command == "kdp-") {       
+    Kd_p -= 0.1;
+    Serial.println(Kd_p);
+    delay(100);
+    }    
+    else if(command == "esc2") {       
+    esc +=10;
+    Serial.println(esc);
+    delay(100);
+    }
+    else if(command == "esc2-") {       
+    esc -=5;
+    Serial.println(esc);
+    delay(100);
+    }
   }
+
 
   desired_roll = 0;
   desired_pitch = 0;
@@ -234,7 +321,7 @@ void loop() {
   double pid_roll_1 = calc_pid(current_roll, desired_roll, Kp_r, Ki_r, Kd_r, 20);
   double pid_pitch_1 = calc_pid(current_pitch, desired_pitch, Kp_r, Ki_r, Kd_r, 20);
   esc_1_mot = base_throttle - pid_pitch_1 + pid_roll_1;
-  esc_2_mot = base_throttle + pid_pitch_1 + pid_roll_1 ;
+  esc_2_mot = base_throttle + pid_pitch_1 + pid_roll_1+esc;
   esc_3_mot = base_throttle + pid_pitch_1 - pid_roll_1 ;
   esc_4_mot = base_throttle - pid_pitch_1 - pid_roll_1;
 
@@ -248,18 +335,35 @@ void loop() {
 
 
 
-
+  Serial.print("Throttle");
+  Serial.print("| ");
   Serial.print(esc_1_mot);
-  Serial.print(", ");
+  Serial.print("| ");
   Serial.print(esc_2_mot);
-  Serial.print(", ");
+  Serial.print("| ");
   Serial.print(esc_3_mot);
-  Serial.print(", ");
+  Serial.print("| ");
   Serial.print(esc_4_mot);
-  Serial.print(", ");
+  Serial.print("| ");
+  Serial.print("Angles");
+  Serial.print("| ");
   Serial.print(kalAngleX);
-  Serial.print(", ");
+  Serial.print("| ");
   Serial.print(-kalAngleY);
+  Serial.print("| ");
+  Serial.print("PID");
+  Serial.print("| ");
+  Serial.print(Kp_r);
+  Serial.print("| ");
+  Serial.print(Kp_p);
+  Serial.print("| ");
+  Serial.print(Ki_r);
+  Serial.print("| ");
+  Serial.print(Ki_p);
+  Serial.print("| ");
+  Serial.print(Kd_r);
+  Serial.print("| ");
+  Serial.print(Kd_p);
   Serial.println();
 
 
